@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 2661955609146422126}
   - component: {fileID: 2661955609146422124}
   - component: {fileID: 2661955609146422125}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: PlayerModel
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -95,7 +95,7 @@ GameObject:
   - component: {fileID: 2661955609505067356}
   - component: {fileID: 2661955609505067357}
   - component: {fileID: 2661955609505067358}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Player
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -144,14 +144,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8211ce30367248e47a550a98e69c6f87, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _maxSpeed: 5
-  _movementAcceleration: 10
-  _movementDeceleration: 20
+  _maxSpeed: 8
+  _movementAcceleration: 3
+  _movementDeceleration: 8
   _obstacleLayers:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 1
   _currentSpeed: 0
-  _DebugVisuals: 0
+  _debugVisuals: 1
 --- !u!1 &4510304877772099362
 GameObject:
   m_ObjectHideFlags: 0
@@ -164,7 +164,7 @@ GameObject:
   - component: {fileID: 3198688962050942040}
   - component: {fileID: 1093683321269631995}
   - component: {fileID: 3014791329990783355}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Face
   m_TagString: Untagged
   m_Icon: {fileID: 0}

@@ -14,14 +14,16 @@ public class PlayerController : MonoBehaviour
     [SerializeField]
     float _movementDeceleration = 20f;
 
-    //[SerializeField, Tooltip("Maximum turning speed of the character.")]
-    //float _turnSpeed = 5f;
-
-    [SerializeField]
+    [SerializeField, Tooltip("The physics layer on which to detect obstacles.")]
     LayerMask _obstacleLayers;
 
     CapsuleCollider _characterCollider;
 
+    [SerializeField]
+    string _horizontalMovementInputAxis = "Horizontal";
+    
+    [SerializeField]
+    string _verticalMovementInputAxis = "Vertical";
 
     [Header("DEBUG")]
     [SerializeField]
@@ -34,24 +36,26 @@ public class PlayerController : MonoBehaviour
         _characterCollider = GetComponent<CapsuleCollider>();
 	}
 
+    ///
+    // Open questions:
+    // F: is input binary, or analogoue? => can we walk slow if only 0.5 of forward is pressed?
+    // A: flowchart says accelerate when forward until max speed
+    // F: should there be turnspeed?
+    // A: assuming no because turn at any moment in any direction
+    ///
+
 
 	void Update() {
-        float horizontal = Input.GetAxis("Horizontal");
-        float vertical = Input.GetAxis("Vertical");
+        float horizontal = Input.GetAxis(_horizontalMovementInputAxis);
+        float vertical = Input.GetAxis(_verticalMovementInputAxis);
 
         Vector3 input = new Vector3(horizontal, 0, vertical);
         // clamp input so diagonal walking is not faster
-        //input = input.normalized;
+        input = Vector3.ClampMagnitude(input, 1f);
 
 		if (_debugVisuals) {
             Debug.DrawRay(transform.position + new Vector3(0,1.5f,0), input, Color.grey);
 		}
-
-        ///
-        // Open questions:
-        // is input binary, or analogoue? => can we walk slow if only 0.5 of forward is pressed?
-        //  A: flowchart says accelerate when forward until max speed
-        ///
 
 
 
@@ -71,7 +75,7 @@ public class PlayerController : MonoBehaviour
 
         // obstacles
         Vector3 desiredMovement = _currentSpeed * Time.deltaTime * transform.forward;
-        desiredMovement = HandleObstacles(desiredMovement);
+        desiredMovement = CalculateMaxPossibleMovement(desiredMovement);
     	if (_debugVisuals) {
             Debug.Log("going to move: " + desiredMovement);
             Debug.DrawRay(transform.position + new Vector3(0,2f,0), desiredMovement, Color.magenta);
@@ -86,37 +90,63 @@ public class PlayerController : MonoBehaviour
     /// </summary>
     /// <param name="desiredMovement"></param>
     /// <returns></returns>
-	private Vector3 HandleObstacles(Vector3 desiredMovement) {
-        // offset start position of ray a little behind the character to catch overlaps
-        Ray moveDirection = new Ray(transform.position + new Vector3(0, 1, 0) + (transform.forward * -1 * 0.02f), desiredMovement);
+	private Vector3 CalculateMaxPossibleMovement(Vector3 desiredMovement) {
+        Ray leftMoveDirection = new Ray(transform.position + new Vector3(0, 1, 0) + transform.right*-_characterCollider.radius, desiredMovement);
+        Ray rightMoveDirection = new Ray(transform.position + new Vector3(0, 1, 0) + transform.right*_characterCollider.radius, desiredMovement);
+        Ray centerMoveDirection = new Ray(transform.position + new Vector3(0, 1, 0), desiredMovement);
+
         Vector3 forwardPointOnCharacterHull = transform.position + (transform.forward * _characterCollider.radius) + new Vector3(0, 1, 0);
-        RaycastHit obstacleInfo = new RaycastHit();
+        Vector3 forwardPointOnCharacterHullLeft = transform.position + (transform.forward * _characterCollider.radius) + new Vector3(0, 1, 0) + transform.right* -_characterCollider.radius;
+        Vector3 forwardPointOnCharacterHullRight = transform.position + (transform.forward * _characterCollider.radius) + new Vector3(0, 1, 0) + transform.right*_characterCollider.radius;
+        RaycastHit obstacleInfo;
 
-        // assuming y-Axis as up of the character
-        Vector3 topSphereCenter = transform.position + _characterCollider.center + (Vector3.up * (_characterCollider.height / 2 - _characterCollider.radius));
-        Vector3 botSphereCenter = transform.position + _characterCollider.center - (Vector3.up * (_characterCollider.height / 2 - _characterCollider.radius));
+        // center point cast
+        if(Physics.Raycast(centerMoveDirection, out obstacleInfo, _maxSpeed * 2f, _obstacleLayers)) {
 
-        if (Physics.CapsuleCast(topSphereCenter, botSphereCenter, _characterCollider.radius, desiredMovement, out obstacleInfo, _maxSpeed * 2f, _obstacleLayers)) {
             float distToObstacle = (obstacleInfo.point - forwardPointOnCharacterHull).magnitude;
-
             if (_debugVisuals) {
-                Debug.Log("hit " + distToObstacle + " / " + desiredMovement.magnitude);
-                Debug.DrawLine(obstacleInfo.point, forwardPointOnCharacterHull, Color.cyan);                
-                Debug.DrawRay(moveDirection.origin, moveDirection.direction * _maxSpeed * 2f, Color.red);
-            }
-            
-            //if (distToObstacle < desiredMovement.magnitude) {
-            //    return Vector3.ClampMagnitude(desiredMovement, distToObstacle);
-            //}
-            if (distToObstacle < 0.05f) {
-                return Vector3.zero;
+                Debug.Log("hit " + distToObstacle);
+                Debug.DrawRay(centerMoveDirection.origin, centerMoveDirection.direction * _maxSpeed * 2f, Color.red);
+		    }
+            if(distToObstacle < desiredMovement.magnitude) {
+                return Vector3.ClampMagnitude(desiredMovement, distToObstacle);
 			}
-
 		}
+
+        // left point cast
+        if(Physics.Raycast(leftMoveDirection, out obstacleInfo, _maxSpeed * 2f, _obstacleLayers)) {
+            float distToObstacle = (obstacleInfo.point - forwardPointOnCharacterHullLeft).magnitude;
+            if (_debugVisuals) {
+                Debug.Log("left hit " + distToObstacle);
+                Debug.DrawRay(leftMoveDirection.origin, leftMoveDirection.direction * _maxSpeed * 2f, Color.red);
+		    }
+            if(distToObstacle < desiredMovement.magnitude) {
+                return Vector3.ClampMagnitude(desiredMovement, distToObstacle);
+			}
+		}
+
+        // right point cast
+        if(Physics.Raycast(rightMoveDirection, out obstacleInfo, _maxSpeed * 2f, _obstacleLayers)) {
+
+            float distToObstacle = (obstacleInfo.point - forwardPointOnCharacterHullRight).magnitude;
+            if (_debugVisuals) {
+                Debug.Log("left hit " + distToObstacle);
+                Debug.DrawRay(rightMoveDirection.origin, rightMoveDirection.direction * _maxSpeed * 2f, Color.red);
+		    }
+            if(distToObstacle < desiredMovement.magnitude) {
+                return Vector3.ClampMagnitude(desiredMovement, distToObstacle);
+			}
+		}
+
+
 		if (_debugVisuals) {
-            Debug.DrawRay(moveDirection.origin, moveDirection.direction * _maxSpeed * 2f, Color.green);
+            Debug.DrawRay(centerMoveDirection.origin, centerMoveDirection.direction * _maxSpeed * 2f, Color.green);
+            Debug.DrawRay(leftMoveDirection.origin, leftMoveDirection.direction * _maxSpeed * 2f, Color.green);
+            Debug.DrawRay(rightMoveDirection.origin, rightMoveDirection.direction * _maxSpeed * 2f, Color.green);
 		}
 
         return desiredMovement;
 	}
+
+
 }
