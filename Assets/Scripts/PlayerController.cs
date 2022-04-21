@@ -71,10 +71,11 @@ public class PlayerController : MonoBehaviour
 
         // obstacles
         Vector3 desiredMovement = _currentSpeed * Time.deltaTime * transform.forward;
+        desiredMovement = HandleObstacles(desiredMovement);
     	if (_debugVisuals) {
+            Debug.Log("going to move: " + desiredMovement);
             Debug.DrawRay(transform.position + new Vector3(0,2f,0), desiredMovement, Color.magenta);
 		}
-        desiredMovement = HandleObstacles(desiredMovement);
 
 
         transform.position += desiredMovement;
@@ -86,20 +87,31 @@ public class PlayerController : MonoBehaviour
     /// <param name="desiredMovement"></param>
     /// <returns></returns>
 	private Vector3 HandleObstacles(Vector3 desiredMovement) {
-        Ray moveDirection = new Ray(transform.position + new Vector3(0, 1, 0), desiredMovement);
+        // offset start position of ray a little behind the character to catch overlaps
+        Ray moveDirection = new Ray(transform.position + new Vector3(0, 1, 0) + (transform.forward * -1 * 0.02f), desiredMovement);
         Vector3 forwardPointOnCharacterHull = transform.position + (transform.forward * _characterCollider.radius) + new Vector3(0, 1, 0);
         RaycastHit obstacleInfo = new RaycastHit();
 
-        if(Physics.Raycast(moveDirection, out obstacleInfo, _maxSpeed * 2f, _obstacleLayers)) {
+        // assuming y-Axis as up of the character
+        Vector3 topSphereCenter = transform.position + _characterCollider.center + (Vector3.up * (_characterCollider.height / 2 - _characterCollider.radius));
+        Vector3 botSphereCenter = transform.position + _characterCollider.center - (Vector3.up * (_characterCollider.height / 2 - _characterCollider.radius));
 
+        if (Physics.CapsuleCast(topSphereCenter, botSphereCenter, _characterCollider.radius, desiredMovement, out obstacleInfo, _maxSpeed * 2f, _obstacleLayers)) {
             float distToObstacle = (obstacleInfo.point - forwardPointOnCharacterHull).magnitude;
-            Debug.Log("hit " + distToObstacle);
+
             if (_debugVisuals) {
+                Debug.Log("hit " + distToObstacle + " / " + desiredMovement.magnitude);
+                Debug.DrawLine(obstacleInfo.point, forwardPointOnCharacterHull, Color.cyan);                
                 Debug.DrawRay(moveDirection.origin, moveDirection.direction * _maxSpeed * 2f, Color.red);
-		    }
-            if(distToObstacle < desiredMovement.magnitude) {
-                return Vector3.ClampMagnitude(desiredMovement, distToObstacle);
+            }
+            
+            //if (distToObstacle < desiredMovement.magnitude) {
+            //    return Vector3.ClampMagnitude(desiredMovement, distToObstacle);
+            //}
+            if (distToObstacle < 0.05f) {
+                return Vector3.zero;
 			}
+
 		}
 		if (_debugVisuals) {
             Debug.DrawRay(moveDirection.origin, moveDirection.direction * _maxSpeed * 2f, Color.green);
