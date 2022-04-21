@@ -1,0 +1,18 @@
+# =============== #
+# Unity generated #
+# =============== #
+/[Tt]emp/
+/[Ll]ibrary/
+/[Oo]bj/
+/MemoryCaptures/
+/UserSettings/
+
+# ======================= #
+# Visual Studio generated #
+# ======================= #
+.vs/
+.vsconfig
+*.csproj
+*.csproj.user
+*.suo
+*.sln
